@@ -54,6 +54,11 @@ void AllOff(void);
 void WestRed(void);
 void WestYellow(void);
 void WestGreen(void);
+void SouthRed(void);
+void SouthYellow(void);
+void SouthGreen(void);
+void PedestriansRed(void);
+void PedestriansGreen(void);
 
 // ***** 3. Subroutines Section *****
 void PortB_Init(void){
@@ -161,15 +166,39 @@ void WestGreen(void){
 	WestGreenOn();
 }
 
+void SouthRed(void){
+	AllOff();
+	SouthRedOn();
+}
+
+void SouthYellow(void){
+	AllOff();
+	SouthYellowOn();
+}
+
+void SouthGreen(void){
+	AllOff();
+	SouthGreenOn();
+}
+
+void PedestriansRed(void){
+	AllOff();
+	PedestriansRedOn();
+}
+
+void PedestriansGreen(void){
+	AllOff();
+	PedestriansGreenOn();
+}
+
 int main(void){ 
   TExaS_Init(SW_PIN_PE210, LED_PIN_PB543210,ScopeOff); // activate grader and set system clock to 80 MHz
 	Port_Init();
 
   
   EnableInterrupts();
-	WestRed();
+
   while(1){
      
   }
 }
-
