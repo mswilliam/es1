@@ -20,6 +20,9 @@
 // ***** 1. Pre-processor Directives Section *****
 #include "TExaS.h"
 #include "tm4c123gh6pm.h"
+
+#define FiveMS 0x64
+#define OneMS 0x14
 #define WESTGREEN 0X03
 #define WESTYELLOW 0X04
 #define WESTRED 0X05
@@ -32,6 +35,16 @@
 
 // ***** 2. Global Declarations Section *****
 
+enum eState{GoSouth = 0x00, WaitSouth = 0X01, GoWest = 0x02, WaitWest = 0X03, GoPedestrians = 0x04, WaitPedestriansY1 = 0X05, WaitPedestriansO1 = 0X06, WaitPedestriansY2 = 0X07, WaitPedestriansO2 = 0X08, stateMax = 0x09};
+enum eInput{inputNone = 0x00, inputW = 0x01, inputS = 0x02, inputWS = 0x03, inputP = 0x04, inputPW = 0x05, inputPS = 0x06, inputPSW = 0x07, inputMAX = 0x08};
+
+struct TState {
+  void (*functionOut) (void); 
+  unsigned long Time;
+  enum eState Next[inputMAX];
+};
+typedef struct TState Fsm;
+
 // FUNCTION PROTOTYPES: Each subroutine defined
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -39,26 +52,18 @@ void PortB_Init(void);
 void PortE_Init(void);
 void PortF_Init(void);
 void Port_Init(void);
-void WestRedOn(void);
-void WestYellowOn(void);
-void WestGreenOn(void);
-void SouthRedOn(void);
-void SouthYellowOn(void);
-void SouthGreenOn(void);
-void PedestriansRedOn(void);
-void PedestriansGreenOn(void);
-void WestOff(void);
-void SouthOff(void);
+
 void PedestriansOff(void);
+void CarRed(void);
+void CarOff(void);
 void AllOff(void);
-void WestRed(void);
 void WestYellow(void);
 void WestGreen(void);
-void SouthRed(void);
 void SouthYellow(void);
 void SouthGreen(void);
-void PedestriansRed(void);
 void PedestriansGreen(void);
+void PedestriansRed(void);
+void Delay100ms(unsigned long time);
 
 // ***** 3. Subroutines Section *****
 void PortB_Init(void){
@@ -100,98 +105,80 @@ void Port_Init(void){
 	PortF_Init();
 }
 
-void WestRedOn(void){
-	GPIO_PORTB_DATA_R |= PIN(WESTRED);
-}
-
-void WestYellowOn(void){
-	GPIO_PORTB_DATA_R |= PIN(WESTYELLOW);
-}
-
-void WestGreenOn(void){
-	GPIO_PORTB_DATA_R |= PIN(WESTGREEN);
-}
-
-void SouthRedOn(void){
-	GPIO_PORTB_DATA_R |= PIN(SOUTHRED);
-}
-
-void SouthYellowOn(void){
-	GPIO_PORTB_DATA_R |= PIN(SOUTHYELLOW);
-}
-
-void SouthGreenOn(void){
-	GPIO_PORTB_DATA_R |= PIN(SOUTHGREEN);
-}
-
-
-void PedestriansRedOn(void){
-	GPIO_PORTF_DATA_R |= PIN(PEDRED);
-}
-
-void PedestriansGreenOn(void){
-	GPIO_PORTF_DATA_R |= PIN(PEDGREEN);
-}
-
-void WestOff(void){
-	GPIO_PORTB_DATA_R &= ~(PIN(WESTRED)|PIN(WESTYELLOW)|PIN(WESTGREEN));
-}
-
-void SouthOff(void){
-	GPIO_PORTB_DATA_R &= ~(PIN(SOUTHRED)|PIN(SOUTHYELLOW)|PIN(SOUTHGREEN));
-}
-
 void PedestriansOff(void){
 	GPIO_PORTF_DATA_R &= ~(PIN(PEDGREEN)|PIN(PEDRED));
 }
 
+void PedestriansRed(void){
+	GPIO_PORTF_DATA_R = PIN(PEDRED);
+}
+
 void AllOff(void){
-	WestOff();
-	SouthOff();
+	CarOff();
 	PedestriansOff();
 }
 
-void WestRed(void){
-	AllOff();
-	WestRedOn();
+void CarOff(void){
+	GPIO_PORTB_DATA_R &= ~(PIN(WESTRED)|PIN(WESTYELLOW)|PIN(WESTGREEN)|PIN(SOUTHRED)|PIN(SOUTHYELLOW)|PIN(SOUTHGREEN));
 }
 
+void CarRed(void){
+	GPIO_PORTB_DATA_R = PIN(WESTRED)|PIN(SOUTHRED);
+}
+
+
 void WestYellow(void){
-	AllOff();
-	WestYellowOn();
+	GPIO_PORTB_DATA_R = PIN(WESTYELLOW)|PIN(SOUTHRED);
+	PedestriansRed();
 }
 
 void WestGreen(void){
-	AllOff();
-	WestGreenOn();
-}
-
-void SouthRed(void){
-	AllOff();
-	SouthRedOn();
+	GPIO_PORTB_DATA_R = PIN(WESTGREEN)|PIN(SOUTHRED);
+	PedestriansRed();
 }
 
 void SouthYellow(void){
-	AllOff();
-	SouthYellowOn();
+	GPIO_PORTB_DATA_R = PIN(SOUTHYELLOW)|PIN(WESTRED);
+	PedestriansRed();
 }
 
 void SouthGreen(void){
-	AllOff();
-	SouthGreenOn();
-}
-
-void PedestriansRed(void){
-	AllOff();
-	PedestriansRedOn();
+	GPIO_PORTB_DATA_R = PIN(SOUTHGREEN)|PIN(WESTRED);
+	PedestriansRed();
 }
 
 void PedestriansGreen(void){
-	AllOff();
-	PedestriansGreenOn();
+	CarRed();
+	GPIO_PORTF_DATA_R = PIN(PEDGREEN);
 }
 
+void Delay100ms(unsigned long time){
+  unsigned long i;
+  while(time > 0){
+    i =  71933; // 0.05sec in simulation //1333333;  // this number means 100ms
+    while(i > 0){
+      i = i - 1;
+    }
+    time = time - 1; // decrements every 100 ms
+  }
+}
+
+
 int main(void){ 
+	enum eState currentState = GoSouth;
+	Fsm fsm[stateMax] ={
+		{SouthGreen, FiveMS, {GoSouth, WaitSouth, GoSouth, WaitSouth,  WaitSouth,  WaitSouth,  WaitSouth,  WaitSouth}},
+		{SouthYellow, FiveMS, {GoWest, GoWest, GoWest, GoWest,  GoPedestrians,  GoWest,  GoPedestrians,  GoWest}},
+		{WestGreen, FiveMS, {GoWest, GoWest, WaitWest, WaitWest,  WaitWest,  WaitWest,  WaitWest,  WaitWest}},
+		{WestYellow, FiveMS, {GoPedestrians, GoPedestrians, GoSouth, GoSouth,  GoPedestrians,  GoPedestrians,  GoPedestrians,  GoPedestrians}},
+		{PedestriansGreen, FiveMS, {GoPedestrians, WaitPedestriansY1, WaitPedestriansY1, WaitPedestriansY1,  GoPedestrians,  WaitPedestriansY1,  WaitPedestriansY1,  WaitPedestriansY1}},
+		{PedestriansOff, OneMS, {WaitPedestriansO1, WaitPedestriansO1, WaitPedestriansO1, WaitPedestriansO1,  WaitPedestriansO1,  WaitPedestriansO1,  WaitPedestriansO1,  WaitPedestriansO1}},
+		{PedestriansGreen, OneMS, {WaitPedestriansY2, WaitPedestriansY2, WaitPedestriansY2, WaitPedestriansY2,  WaitPedestriansY2,  WaitPedestriansY2,  WaitPedestriansY2,  WaitPedestriansY2}},
+		{PedestriansOff, OneMS, {WaitPedestriansO2, WaitPedestriansO2, WaitPedestriansO2, WaitPedestriansO2,  WaitPedestriansO2,  WaitPedestriansO2,  WaitPedestriansO2,  WaitPedestriansO2}},
+		{PedestriansGreen, OneMS, {GoSouth, GoWest, GoSouth, GoSouth,  GoSouth,  GoWest,  GoSouth,  GoSouth}},
+	};
+	enum eInput input;
+	
   TExaS_Init(SW_PIN_PE210, LED_PIN_PB543210,ScopeOff); // activate grader and set system clock to 80 MHz
 	Port_Init();
 
@@ -199,6 +186,9 @@ int main(void){
   EnableInterrupts();
 
   while(1){
-     
+		fsm[currentState].functionOut();
+		Delay100ms(fsm[currentState].Time);
+		input = (enum eInput)(GPIO_PORTE_DATA_R & (PIN(2)|PIN(1)|PIN(0)));
+		currentState = fsm[currentState].Next[input];
   }
 }
