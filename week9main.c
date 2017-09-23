@@ -37,13 +37,11 @@ Second, make the LED flash if either switch SW1 or SW2 is pressed
 Third, record PortF bits 4,1,0 every time the input changes or the output changes. 
 For example, if your system detects a change in either PF4 or PF0 input, 
 record PortF bits 4,1,0. If your system causes a change in PF1, record PortF bits 4,1,0. 
-
 If both PF4 and PF0 switch are not pressed, the PF1 output should be low.  
 If either PF4 or PF0 switches is pressed, the output toggles at 10 Hz (±10%). 
 Information collected in the Data array matches the I/O on PortF.
 50 data points are collected only on a change in input or a change in output.
 This means no adjacent elements in the array should be equal.
-
 */
 
 
@@ -102,9 +100,9 @@ int main(void){  unsigned long i,last,now;
   while(1){
     Led = GPIO_PORTF_DATA_R;   // read previous
     if(IsSw1Pressed() || IsSw2Pressed()){
-			Led = Led^0x02;            // toggle red LED
+			Led ^= MASK_BIT_1;            // toggle red LED
 		}else{
-			TurnOffLed();
+			Led &= ~MASK_BIT_1;
 		}
     GPIO_PORTF_DATA_R = Led;   // output 
 		newData = GPIO_PORTF_DATA_R&(MASK_BIT_4|MASK_BIT_1|MASK_BIT_0);
