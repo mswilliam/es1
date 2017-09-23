@@ -64,6 +64,7 @@ void SouthGreen(void);
 void PedestriansGreen(void);
 void PedestriansRed(void);
 void Delay100ms(unsigned long time);
+void SysTick_Init(void);
 
 // ***** 3. Subroutines Section *****
 void PortB_Init(void){
@@ -163,6 +164,13 @@ void Delay100ms(unsigned long time){
   }
 }
 
+// Initialize SysTick with busy wait running at bus clock.
+void SysTick_Init(void){
+  NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup
+  NVIC_ST_RELOAD_R = 0x00FFFFFF;        // maximum reload value
+  NVIC_ST_CURRENT_R = 0;                // any write to current clears it             
+  NVIC_ST_CTRL_R = 0x00000005;          // enable SysTick with core clock
+}
 
 int main(void){ 
 	enum eState currentState = GoSouth;
@@ -181,10 +189,9 @@ int main(void){
 	
   TExaS_Init(SW_PIN_PE210, LED_PIN_PB543210,ScopeOff); // activate grader and set system clock to 80 MHz
 	Port_Init();
-
+	SysTick_Init();
   
   EnableInterrupts();
-
   while(1){
 		fsm[currentState].functionOut();
 		Delay100ms(fsm[currentState].Time);
